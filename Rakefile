@@ -8,6 +8,7 @@ spec = Gem::Specification.new do |s|
   s.name = 'arspy'
   s.version = GemVersions.get_version
   s.platform = Gem::Platform::RUBY
+  s.required_ruby_version = '>= 1.8.7'
   s.description = 'Active Record Spy'
   s.summary = 'Rails console command line tool for browsing and inspecting the structure, associations and data of an ActiveRecord data model.'
   
@@ -90,6 +91,7 @@ task :gemspec do
     f.write spec.to_ruby
   end
   GemVersions.increment_version
+  GemVersions.commit_and_push
 end
  
 Rake::GemPackageTask.new(spec) do |p|
