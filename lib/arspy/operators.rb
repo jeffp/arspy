@@ -1,6 +1,6 @@
 module Arspy
   module Operators
-    def self.la(active_record_klass)
+    def self.list_associations(active_record_klass)
       counts = {}
       rows = active_record_klass.reflect_on_all_associations.map do |a|
         counts[a.macro] ||= 0
@@ -12,7 +12,7 @@ module Arspy
       "Total: #{counts.inject(0){|sum, c| sum+c.last}} (" + counts.map{|c| "#{c.last} #{c.first}" }.join(', ') + ")"
     end
 
-    def self.lf(active_record_klass)
+    def self.list_fields(active_record_klass)
       rows = active_record_klass.columns.map do |c|
         self.format_column_field(c)
       end
@@ -70,20 +70,96 @@ module Arspy
       return array if (args.empty? || array.nil? || array.empty?)
       array.select{|o| o && !self.test_object(o, args)}
     end
-    def self.interpret(array, symbol, *args)
-      return nil unless (array && symbol)
+    def self.enable_abbreviations; @@abbreviations_enabled = true; end
+    def self.disable_abbreviations; @@abbreviations_enabled = false; end
+    @@abbreviations_enabled = true
+    def self.interpret(array, method_name, *args)
+      return nil unless (array && method_name)
       return nil unless (array.is_a?(Array) && !array.empty? && array.first.is_a?(ActiveRecord::Base))
 
-      if array.first.class.reflect_on_all_associations.detect{|a| a.name == symbol}
-        array.map(&symbol).flatten
-      elsif (array.first.attribute_names.include?(symbol.to_s) || array.first.respond_to?(symbol))
-        return array.map(&symbol) if args.empty?
-        raise 'Hash not allowed as attribute conditionals' if args.any?{|a| a.is_a?(Hash)}
-        array.select{|o| o && self.test_attribute(o, symbol, args)}
-      else
-        nil
+      if array.first.class.reflect_on_all_associations.detect{|a| a.name == method_name}
+        return interpret_association(array, method_name, *args)
+      elsif (array.first.attribute_names.include?(method_name.to_s) || array.first.respond_to?(method_name))
+        return interpret_attribute_or_method(array, method_name, *args)
       end
+      return @@abbreviations_enabled ? interpret_abbreviation(array, method_name, *args) : nil
     end
+    private
+    def self.interpret_abbreviation(array, symbol, *args)
+      if (descriptor = resolve_abbreviation_for_attributes_and_associations(array.first, symbol))
+        if descriptor[:type] == :association
+          return interpret_association(array, descriptor[:method_name], *args)
+        else
+          return interpret_attribute_or_method(array, descriptor[:method_name], *args)
+        end
+      end
+      nil
+    end
+    def self.resolve_abbreviation_for_attributes_and_associations(object, method_name)
+      klass = object.class
+      setup_abbreviations(object) unless object.instance_variable_defined?('@arspy_abbreviations')
+      if (ambiguity = klass.instance_variable_get('@arspy_ambiguous_abbreviations')[method_name])
+        raise "Ambiguous abbreviation '#{ambiguity[:abbr]}' could be #{quote_and_join(ambiguity[:methods])}"
+      end
+      klass.instance_variable_get('@arspy_abbreviations')[method_name]
+    end
+    def self.setup_abbreviations(object)
+      associations = object.class.reflect_on_all_associations.map(&:name).map(&:to_sym)
+      attributes = object.attribute_names.map(&:to_sym)
+      assoc_descriptors = associations.map{|method_name| {:method_name=>method_name, :type=>:association, :abbr=>abbreviate_method_name(method_name)}}
+      attrib_descriptors = attributes.map{|method_name| {:method_name=>method_name, :type=>:attribute, :abbr=>abbreviate_method_name(method_name)}}
+      all_descriptors = assoc_descriptors + attrib_descriptors
+      object.class.instance_variable_set('@arspy_ambiguous_abbreviations', remove_ambiguities(all_descriptors))
+      object.class.instance_variable_set('@arspy_abbreviations', Hash[*all_descriptors.map{|d| [d[:abbr], d] }.flatten])
+    end
+    def self.remove_ambiguities(descriptors)
+      list={}
+      ambiguities = {}
+      descriptors.each do |d|
+        if list.include?(d[:abbr])
+          if ambiguities[d[:abbr]]
+            ambiguities[d[:abbr]][:methods] << d[:method_name]
+          else            
+           ambiguities[d[:abbr]] = {:abbr=>d[:abbr], :methods=>[d[:method_name]]}
+           ambiguities[d[:abbr]][:methods] << list[d[:abbr]][:method_name]
+          end
+        else
+          list[d[:abbr]] = d
+        end
+      end
+      descriptors.reject!{|d| ambiguities.map{|h| h.first}.include?(d[:abbr])}
+      ambiguities
+    end
+    def self.abbreviate_method_name(method_name)
+      splits = method_name.to_s.split('_')
+      abbr=[]
+      if splits.first == ''
+        abbr << '_'
+      end
+      splits.reject!{|s| s == ''}
+      abbr += splits.map do |s| 
+        chars = s.split(//)
+        first = chars.shift
+        [first, chars.map{|ch| ch =~ /[0-9]/ ? ch : nil}].compact.flatten.join('')
+      end
+      
+      abbr << '_' if (method_name.to_s =~ /_$/)
+      abbr.join('').to_sym
+    end
+    def self.quote_and_join(array)
+      return "'#{array.first}'" if array.size == 1
+      last = array.pop
+      "'#{array.join("', '")}' or '#{last}'"
+    end
+    def self.interpret_association(array, method_name, *args)
+      array.map(&method_name).flatten
+    end
+    def self.interpret_attribute_or_method(array, method_name, *args)
+      return array.map(&method_name) if args.empty?
+      raise 'Hash not allowed as attribute conditionals' if args.any?{|a| a.is_a?(Hash)}
+      array.select{|o| o && self.test_attribute(o, method_name, args)}
+    end
+    public
 
     def self.test_attribute(obj, attr_sym, args)
       return false if (obj.nil? || attr_sym.nil? || args.empty?)
@@ -99,11 +175,6 @@ module Arspy
           false
         end
       end
-    end
-
-    def self.prepare_arguments(symbol, *args)
-      return nil if args.empty?
-      Hash[*args.map{|a| a.is_a?(Hash) ? a.map{|k,v| [k, v]} : [symbol, a]}.flatten]
     end
 
     @@column_padding = 2

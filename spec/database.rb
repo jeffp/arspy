@@ -1,63 +1,80 @@
 require 'rubygems'
 
-gem 'activerecord', ENV['AR_VERSION'] ? "=#{ENV['AR_VERSION']}" : '>=2.1.0'
+gem 'activerecord', ENV['AR_VERSION'] ? "=#{ENV['AR_VERSION']}" : '>=2.3.2'
 require 'active_record'
 
 ActiveRecord::Base.establish_connection({'adapter' => 'sqlite3', 'database' => ':memory:'})
 ActiveRecord::Base.logger = Logger.new("#{File.dirname(__FILE__)}/active_record.log")
 cx = ActiveRecord::Base.connection
 
-cx.create_table(:things, :force=>true) do |t|
-
-end
-cx.create_table(:one_manies, :force=>true) do |t|
-
-end
-cx.create_table(:many_manies, :force=>true) do |t|
-
-end
-cx.create_table(:many_manies_things, :force=>true) do |t|
-
-end
-cx.create_table(:manies_one, :force=>true) do |t|
-
+cx.create_table(:people, :force=>true) do |t|
+  t.string :first_name
+  t.string :last_name
+  t.integer :age
+  t.boolean :active
 end
 
-#basic_associations
-connection.create_table(:companies, :force=>true) do |t|
-  t.string :name
-  t.string :status
-end
-connection.create_table(:contract_workers, :force=>true) do |t|
-  t.references :company
-  t.references :contractor
-  t.string :status
-end
-connection.create_table(:licenses, :force=>true) do |t|
-  t.references :company
-  t.string :status
-end
-connection.create_table(:contractors, :force=>true) do |t|
-  t.string :name
-  t.string :status
-end
-connection.create_table(:employees, :force=>true) do |t|
-  t.references :company
-  t.string :name
-  t.string :status
+class Person < ActiveRecord::Base
+  has_many :friendships
+  has_many :friends, :through=>:friendships
+  has_many :blogs
+  has_many :comments
+  
+  def full_name; "#{first_name} #{last_name}"; end
 end
 
-#polymorphic_associations
-connection.create_table(:comments, :force=>true) do |t|
-  t.references :document, :polymorphic=>true
-  t.text :comment
-  t.string :status
+cx.create_table(:friendships, :force=>true) do |t|
+  t.references :person
+  t.references :friend
+  t.integer :years_known
 end
-connection.create_table(:articles, :force=>true) do |t|
-  t.string :name
-  t.string :status
+
+class Friendship < ActiveRecord::Base
+  belongs_to :person
+  belongs_to :friend, :class=>'Person'
 end
-connection.create_table(:images, :force=>true) do |t|
-  t.string :name
-  t.string :status
+
+cx.create_table(:blogs, :force=>true) do |t|
+  t.references :person
+  t.string :title
+  t.datetime :published_at
+  t.references :asset, :polymorphic=>true
 end
+
+class Blog < ActiveRecord::Base
+  belongs_to :person
+  belongs_to :asset, :polymorphic=>true
+  has_many :comments
+end
+
+cx.create_table(:comments, :force=>true) do |t|
+  t.references :person
+  t.references :blog
+  t.string :content
+end
+
+class Comment < ActiveRecord::Base
+  belongs_to :person
+  belongs_to :blog
+end
+
+cx.create_table(:images, :force=>true) do |t|
+  t.string :caption
+  t.integer :size
+end
+
+class Image < ActiveRecord::Base
+  has_one :blog, :as=>:asset
+end
+
+cx.create_table(:recordings, :force=>true) do |t|
+  t.string :title
+  t.integer :duration
+end
+
+class Recording < ActiveRecord::Base
+  has_one :blog, :as=>:asset
+end
+
+
+

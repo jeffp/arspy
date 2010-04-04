@@ -15,11 +15,11 @@ module Arspy
       end
       def la
         load_target unless loaded?
-        Arspy::Operators.la(@target.first.class) unless (@target.emtpy? || !(@target.first.is_a?(ActiveRecord::Base)))
+        Arspy::Operators.list_associations(@target.first.class) unless (@target.emtpy? || !(@target.first.is_a?(ActiveRecord::Base)))
       end
       def lf
         load_target unless loaded?
-        Arspy::Operators.lf(@target.first.class) unless (@target.empty? || !(@target.first.is_a?(ActiveRecord::Base)))
+        Arspy::Operators.list_fields(@target.first.class) unless (@target.empty? || !(@target.first.is_a?(ActiveRecord::Base)))
       end
       def wi(*args)
         load_target unless loaded?
