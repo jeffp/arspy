@@ -1,3 +1,5 @@
 .DS_Store
 pkg
 nbproject
+arspy*.gem
+arspy*.gemspec
