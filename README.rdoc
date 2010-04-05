@@ -11,7 +11,7 @@ Install
 
 Use
 
-require 'arspy'
+* require 'arspy'
 
 	
 == Description
@@ -34,7 +34,6 @@ Append the 'lf' command to an ActiveRecord object, class, or association method 
 print the name, type and database variable type for each attribute. 
 
   User.lf
-
   first_name  :string   (varchar(50))
   last_name   :string   (varchar(50))
   active      :boolean  (boolean)
@@ -119,20 +118,22 @@ Expressions using associations
 
 === Chaining associations to get data sets
 
-Chain associations to get an array of the results.  For example, want to see all the 
-comments for all blogs written by 'Sarah Johnson'?
+Chain associations to get an array of the results.  For example, the following will
+collect all of the comment objects for all blogs written by User with ID=2.
 
   User.find(2).blogs.comments
   [#<Comment id: 21, user_id: 8, blog_id: 85, rating: 5, ... 
 
-Clean this up by just getting the 'comment' fields of each comment and print in a column.
+Clean this up by further chainging to return an array of the 'comment' field 
+of each comment object and use 'pr' to print in a column.
 
   User.find(2).blogs.comments.comment.pr
   I agree with the blogger
-  I love ActiveRecord.
-  ActiveRecord is too confusing.
+  I'm new to ActiveRecord.  Is there anyway to...
+  How do you use polymorphic associations to...
+  ...
 
-Note that chaining is accumulative.  If you want more specific data, use the 'wi' or 'wo'
+Note that chaining is accumulative.  To limit the results set, use the 'wi' or 'wo'
 commands.
 
 == Limiting data sets
