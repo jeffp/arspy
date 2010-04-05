@@ -158,13 +158,13 @@ preceding it, namely, the Comment object.
 === ORing and ANDing with the 'wi' command
 
 The 'wi' command can take an unlimited number of parameters.  Multiple parameters
-act as an OR statement on the results.  So the above example could have been written 
+works as an OR operation on the results.  So the above example could have been written 
 
   User.find(2).blogs.comments.wi(:user_id=>5, :user_id=>9).comments.pr
 
 with the same results.
 
-To get an AND effect, chain the 'wi' command.
+To get an AND operation, chain the 'wi' command.
 
   User.find(2).blogs.comments.wi(:blog_id=>6).wi(:user_id=>5).comments.pr
 
@@ -173,7 +173,7 @@ the comment with ID 5.  On the other hand,
 
   User.find(2).blogs.comments.wi(:blog_id=>6, :user_id=>5).comments.pr
 
-this example returns all comments associated with blog id 6 OR user id 5.
+returns all comments associated with blog id 6 OR user id 5.
 
 === Parameters of the 'wi' command
 
