@@ -4,6 +4,7 @@ module Arspy
       def la; end
       def lf; end
       def pr(*args); end
+      def ap(opts={}); end
     end
   end
 end

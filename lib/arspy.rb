@@ -1,3 +1,4 @@
+require 'rubygems'
 raise 'Arspy only runs in an ActiveRecord environment' unless defined?(ActiveRecord::Base)
 $:.unshift(File.dirname(__FILE__)) unless $:.include?(File.dirname(__FILE__))
 
@@ -6,6 +7,8 @@ require 'meta_programming'
 require 'arspy/operators'
 require 'arspy/delegators'
 require 'arspy/class_extensions'
+gem 'awesome_print', ">= 0.1.1"
+require 'ap'
 
 module Arspy
   def self.included(base)

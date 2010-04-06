@@ -14,10 +14,13 @@ module Arspy
       end
 
       def la
-        Arspy::Operators.list_associations(self.first.class) unless (self.emtpy? || !(self.first.is_a?(ActiveRecord::Base)))
+        Arspy::Operators.list_associations(self.first) unless self.emtpy?
       end
       def lf
-        Arspy::Operators.list_fields(self.first.class) unless (self.empty? || !(self.first.is_a?(ActiveRecord::Base)))
+        Arspy::Operators.list_fields(self.first) unless self.empty?
+      end
+      def ap(opts={})
+        Arspy::Operators.awesome_print(self, opts={}) unless self.empty?
       end
       def pr(*args)
         Arspy::Operators.print_array(self, *args)

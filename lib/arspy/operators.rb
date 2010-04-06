@@ -1,6 +1,9 @@
 module Arspy
   module Operators
-    def self.list_associations(active_record_klass)
+
+    def self.list_associations(klass_or_object)
+      active_record_klass = klass_or_object.is_a?(Class) ? klass_or_object : klass_or_object.class
+      return unless active_record_klass.ancestors.include?(ActiveRecord::Base)
       counts = {}
       rows = active_record_klass.reflect_on_all_associations.map do |assoc|
         counts[assoc.macro] ||= 0
@@ -12,13 +15,20 @@ module Arspy
       "Total: #{counts.inject(0){|sum, count| sum+count.last}} (" + counts.map{|count| "#{count.last} #{count.first}" }.join(', ') + ")"
     end
 
-    def self.list_fields(active_record_klass)
+    def self.list_fields(klass_or_object)
+      active_record_klass = klass_or_object.is_a?(Class) ? klass_or_object : klass_or_object.class
+      return unless active_record_klass.ancestors.include?(ActiveRecord::Base)
       rows = active_record_klass.columns.map do |column|
         self.format_column_field(column)
       end
       rows.sort!{|row1,row2| row1.first <=> row2.first}
       self.print_matrix(rows)
       "Total #{active_record_klass.columns.size} field#{active_record_klass.columns.size == 1 ? '' : 's'}"
+    end
+
+    def self.awesome_print(klass_object_or_array, options={})
+      AwesomePrint.new(options).puts klass_object_or_array
+      nil
     end
 
     def self.format_column_association(assoc)
@@ -30,7 +40,14 @@ module Arspy
     end
 
     def self.print_array(array, *args)
-      array.each{|element| puts element.is_a?(String) ? element : element.inspect } if args.empty?
+      if args.empty?
+        case array.first
+        when ActiveRecord::Base then AwesomePrint.new.puts(array)
+        else
+          array.each{|element| puts element}
+        end
+      end
+      #array.each{|element| puts element.is_a?(String) ? element : element.inspect } if args.empty?
       self.print_matrix(
         array.map do |obj|
           args.map do |arg|
@@ -46,8 +63,8 @@ module Arspy
     end
 
     def self.print_object(object, *args)
-      print_matrix([args.map{|arg| object[arg]}]) if args
-      puts(object.inspect) unless args
+      print_matrix([args.map{|arg| object[arg]}]) unless args.empty?
+      AwesomePrint.new.puts(object) if args.empty?
       nil
     end
     def self.test_object(obj, args)
@@ -127,7 +144,7 @@ module Arspy
           list[desc[:abbr]] = desc
         end
       end
-      descriptors.reject!{|desc| ambiguities.map{|h| h.first}.include?(desc[:abbr])}
+      descriptors.reject!{|desc| ambiguities.map{|hash| hash.first}.include?(desc[:abbr])}
       ambiguities
     end
     def self.abbreviate_method_name(method_name)

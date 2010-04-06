@@ -9,17 +9,21 @@ module Arspy
           result
         end
       end
+      def la
+        load_target unless loaded?
+        Arspy::Operators.list_associations(@target.first) unless @target.emtpy?
+      end
+      def lf
+        load_target unless loaded?
+        Arspy::Operators.list_fields(@target.first) unless @target.empty?
+      end
       def pr(*args)
         load_target unless loaded?
         Arspy::Operators.print_array(@target, *args)
       end
-      def la
+      def ap(opts={})
         load_target unless loaded?
-        Arspy::Operators.list_associations(@target.first.class) unless (@target.emtpy? || !(@target.first.is_a?(ActiveRecord::Base)))
-      end
-      def lf
-        load_target unless loaded?
-        Arspy::Operators.list_fields(@target.first.class) unless (@target.empty? || !(@target.first.is_a?(ActiveRecord::Base)))
+        Arspy::Operators.awesome_print(@target, opts) unless @target.empty?
       end
       def wi(*args)
         load_target unless loaded?
