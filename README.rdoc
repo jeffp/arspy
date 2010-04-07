@@ -113,6 +113,15 @@ Expressions using associations
   Jenny     Westmeyers  213  2
   Maria     Stone       8    88
 
+=== Printing objects and classes
+
+ARSpy integrates 'awesome print' to print lists of objects and classes.  Print objects or
+classes with the 'pr' command, or explicitly print with the 'ap' command.
+
+  User.ap  # => prints the object attributes and columns with awesome print
+  User.find(2).blogs.title.pr  #=> prints the titles of all blogs
+  User.find(2).blogs.pr  # => prints the object fields and data usign awesome print
+
 
 == Iterating Associations and Data
 
@@ -203,3 +212,4 @@ results that do not meet the conditions passed in the parameters.
 
 * ActiveRecord
 * ActiveSupport
+* Awesome Print
