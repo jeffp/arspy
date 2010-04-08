@@ -1,3 +1,7 @@
+require 'arspy/operators/attribute_test'
+require 'arspy/operators/selector'
+require 'arspy/operators/interpreter'
+
 module Arspy
   module Operators
 
@@ -79,120 +83,29 @@ module Arspy
         end
       end
     end
+    # t.people.with(20..30)
+    # t.people.with(2,3,4)
+    # t.people.with(:name=>[/Ed/, /Jen/, 'Joe'])
+    # t.people.with(:age=>10..20)
+    # t.people.with('statistics.statistic_type.abbrevation'=>%w(GP SV% GAA))
     def self.with(array, *args)
       return array if (args.empty? || array.nil? || array.empty?)
-      array.select{|obj| obj && self.test_object(obj, args)}
+      array.select{|obj| 
+        obj && args.any?{|arg|
+          Selector.for(arg).select?(obj) }}
     end
     def self.without(array, *args)
       return array if (args.empty? || array.nil? || array.empty?)
-      array.select{|obj| obj && !self.test_object(obj, args)}
+      array.select{|obj| obj && !args.any?{|arg| Selector.for(arg).select?(obj) }}
     end
-    def self.enable_abbreviations; @@abbreviations_enabled = true; end
-    def self.disable_abbreviations; @@abbreviations_enabled = false; end
-    @@abbreviations_enabled = true
+
+    def self.enable_abbreviations; Interpreter.enable_abbreviations(true); end
+    def self.disable_abbreviations; Interpreter.enable_abbreviations(false); end
+
     def self.interpret(array, method_name, *args)
-      return nil unless (array && method_name)
-      return nil unless (array.is_a?(Array) && !array.empty? && array.first.is_a?(ActiveRecord::Base))
+      Interpreter.for(array, method_name).interpret(*args)
+    end
 
-      if array.first.class.reflect_on_all_associations.detect{|a| a.name == method_name}
-        return interpret_association(array, method_name, *args)
-      elsif (array.first.attribute_names.include?(method_name.to_s) || array.first.respond_to?(method_name))
-        return interpret_attribute_or_method(array, method_name, *args)
-      end
-      return @@abbreviations_enabled ? interpret_abbreviation(array, method_name, *args) : nil
-    end
-    private
-    def self.interpret_abbreviation(array, symbol, *args)
-      if (descriptor = resolve_abbreviation_for_attributes_and_associations(array.first, symbol))
-        if descriptor[:type] == :association
-          return interpret_association(array, descriptor[:method_name], *args)
-        else
-          return interpret_attribute_or_method(array, descriptor[:method_name], *args)
-        end
-      end
-      nil
-    end
-    def self.resolve_abbreviation_for_attributes_and_associations(object, method_name)
-      klass = object.class
-      setup_abbreviations(object) unless object.instance_variable_defined?('@arspy_abbreviations')
-      if (ambiguity = klass.instance_variable_get('@arspy_ambiguous_abbreviations')[method_name])
-        raise "Ambiguous abbreviation '#{ambiguity[:abbr]}' could be #{quote_and_join(ambiguity[:methods])}"
-      end
-      klass.instance_variable_get('@arspy_abbreviations')[method_name]
-    end
-    def self.setup_abbreviations(object)
-      associations = object.class.reflect_on_all_associations.map(&:name).map(&:to_sym)
-      attributes = object.attribute_names.map(&:to_sym)
-      assoc_descriptors = associations.map{|method_name| {:method_name=>method_name, :type=>:association, :abbr=>abbreviate_method_name(method_name)}}
-      attrib_descriptors = attributes.map{|method_name| {:method_name=>method_name, :type=>:attribute, :abbr=>abbreviate_method_name(method_name)}}
-      all_descriptors = assoc_descriptors + attrib_descriptors
-      object.class.instance_variable_set('@arspy_ambiguous_abbreviations', remove_ambiguities(all_descriptors))
-      object.class.instance_variable_set('@arspy_abbreviations', Hash[*all_descriptors.map{|desc| [desc[:abbr], desc] }.flatten])
-    end
-    def self.remove_ambiguities(descriptors)
-      list={}
-      ambiguities = {}
-      descriptors.each do |desc|
-        if list.include?(desc[:abbr])
-          if ambiguities[desc[:abbr]]
-            ambiguities[desc[:abbr]][:methods] << desc[:method_name]
-          else            
-           ambiguities[desc[:abbr]] = {:abbr=>desc[:abbr], :methods=>[desc[:method_name]]}
-           ambiguities[desc[:abbr]][:methods] << list[desc[:abbr]][:method_name]
-          end
-        else
-          list[desc[:abbr]] = desc
-        end
-      end
-      descriptors.reject!{|desc| ambiguities.map{|hash| hash.first}.include?(desc[:abbr])}
-      ambiguities
-    end
-    def self.abbreviate_method_name(method_name)
-      words = method_name.to_s.split('_')
-      abbr=[]
-      if words.first == ''
-        abbr << '_'
-      end
-      words.reject!{|word| word == ''}
-      abbr += words.map do |word|
-        chars = word.split(//)
-        first = chars.shift
-        [first, chars.map{|ch| ch =~ /[0-9]/ ? ch : nil}].compact.flatten.join('')
-      end
-      
-      abbr << '_' if (method_name.to_s =~ /_$/)
-      abbr.join('').to_sym
-    end
-    def self.quote_and_join(array)
-      return "'#{array.first}'" if array.size == 1
-      last = array.pop
-      "'#{array.join("', '")}' or '#{last}'"
-    end
-    def self.interpret_association(array, method_name, *args)
-      array.map(&method_name).flatten
-    end
-    def self.interpret_attribute_or_method(array, method_name, *args)
-      return array.map(&method_name) if args.empty?
-      raise 'Hash not allowed as attribute conditionals' if args.any?{|arg| arg.is_a?(Hash)}
-      array.select{|obj| obj && self.test_attribute(obj, method_name, args)}
-    end
-    public
-
-    def self.test_attribute(obj, attr_sym, args)
-      return false if (obj.nil? || attr_sym.nil? || args.empty?)
-      value = obj.__send__(attr_sym)
-      args.any? do |arg|
-        case arg
-        when String then (arg == value || (obj.instance_eval("#{attr_sym} #{arg}") rescue false))
-        when Regexp then arg.match(value)
-        when Range then arg.include?(value)
-        when Integer then (value.is_a?(ActiveRecord::Base) ? arg == value.id : arg == value)  #TODO: what about value is association collection
-        when Float then arg == value
-        else
-          false
-        end
-      end
-    end
 
     @@column_padding = 2
     def self.print_matrix(matrix_array)

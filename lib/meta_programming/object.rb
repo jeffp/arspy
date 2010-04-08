@@ -2,10 +2,10 @@ module MetaProgramming
   module Object
     def self.included(base)
       raise 'This module may only be included in class Object' unless base.name == 'Object'
-      base.extend(ClassExtensions)
+      base.extend(ClassMethods)
     end
 
-    module ClassExtensions
+    module ClassMethods
       def metaclass
         class << self; self; end
       end

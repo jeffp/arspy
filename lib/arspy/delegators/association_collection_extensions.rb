@@ -10,6 +10,7 @@ module Arspy
         end
       end
       def la
+        puts 'AssociationCollectionExtensions.la'
         load_target unless loaded?
         Arspy::Operators.list_associations(@target.first) unless @target.emtpy?
       end

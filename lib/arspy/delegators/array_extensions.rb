@@ -14,6 +14,7 @@ module Arspy
       end
 
       def la
+        puts 'ArrayExtensions.la'
         Arspy::Operators.list_associations(self.first) unless self.emtpy?
       end
       def lf
