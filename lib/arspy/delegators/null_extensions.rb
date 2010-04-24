@@ -1,8 +1,8 @@
 module Arspy
   module Delegators
     module NullExtensions
-      def la; end
-      def lf; end
+      def la(*args); end
+      def lf(*args); end
       def pr(*args); end
       def ap(opts={}); end
     end

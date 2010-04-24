@@ -13,12 +13,11 @@ module Arspy
         end
       end
 
-      def la
-        puts 'ArrayExtensions.la'
-        Arspy::Operators.list_associations(self.first) unless self.emtpy?
+      def la(*args)
+        Arspy::Operators.list_associations(self.first, *args) unless self.emtpy?
       end
-      def lf
-        Arspy::Operators.list_fields(self.first) unless self.empty?
+      def lf(*args)
+        Arspy::Operators.list_fields(self.first, *args) unless self.empty?
       end
       def ap(opts={})
         Arspy::Operators.awesome_print(self, opts={}) unless self.empty?

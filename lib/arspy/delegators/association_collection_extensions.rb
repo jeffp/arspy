@@ -9,14 +9,13 @@ module Arspy
           result
         end
       end
-      def la
-        puts 'AssociationCollectionExtensions.la'
+      def la(*args)
         load_target unless loaded?
-        Arspy::Operators.list_associations(@target.first) unless @target.emtpy?
+        Arspy::Operators.list_associations(@target.first, *args) unless @target.emtpy?
       end
-      def lf
+      def lf(*args)
         load_target unless loaded?
-        Arspy::Operators.list_fields(@target.first) unless @target.empty?
+        Arspy::Operators.list_fields(@target.first, *args) unless @target.empty?
       end
       def pr(*args)
         load_target unless loaded?

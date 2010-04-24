@@ -5,7 +5,7 @@ require 'arspy/operators/interpreter'
 module Arspy
   module Operators
 
-    def self.list_associations(klass_or_object)
+    def self.list_associations(klass_or_object, *args)
       active_record_klass = klass_or_object.is_a?(Class) ? klass_or_object : klass_or_object.class
       return unless active_record_klass.ancestors.include?(ActiveRecord::Base)
       counts = {}
@@ -15,23 +15,26 @@ module Arspy
         self.format_column_association(assoc)
       end
       rows.sort!{|row1,row2| row1.first <=> row2.first}
+      return rows if args.include?(:data)
       self.print_matrix(rows)
       "Total: #{counts.inject(0){|sum, count| sum+count.last}} (" + counts.map{|count| "#{count.last} #{count.first}" }.join(', ') + ")"
     end
 
-    def self.list_fields(klass_or_object)
+    def self.list_fields(klass_or_object, *args)
       active_record_klass = klass_or_object.is_a?(Class) ? klass_or_object : klass_or_object.class
       return unless active_record_klass.ancestors.include?(ActiveRecord::Base)
       rows = active_record_klass.columns.map do |column|
         self.format_column_field(column)
       end
       rows.sort!{|row1,row2| row1.first <=> row2.first}
+      return rows if args.include?(:data)
       self.print_matrix(rows)
       "Total #{active_record_klass.columns.size} field#{active_record_klass.columns.size == 1 ? '' : 's'}"
     end
 
     def self.awesome_print(klass_object_or_array, options={})
-      AwesomePrint.new(options).puts klass_object_or_array
+      #AwesomePrint.new(options).puts(klass_object_or_array)
+      ap(klass_object_or_array)
       nil
     end
 
@@ -40,13 +43,25 @@ module Arspy
       [assoc.name.to_s, assoc.macro.to_s, "(#{assoc.options[:class_name] || assoc.name.to_s.singularize.camelize})", select_options.empty? ? '' : Hash[*select_options.flatten].inspect]
     end
     def self.format_column_field(field)
-      [field.name.to_s, ":#{field.type}", "(#{field.sql_type})"]
+      [field.name.to_s, ":#{field.type}", format_db_type(field), format_db_type_modifiers(field)]
+    end
+    def self.format_db_type(field)
+      prec_scale = field.precision && field.scale ? "#{field.precision}:#{field.scale}" : ""
+      default = field.default ? " (#{field.default})" : ""
+      "#{field.sql_type}#{prec_scale}#{default}"
+    end
+    def self.format_db_type_modifiers(field)
+      modifiers = []
+      modifiers << 'PRIMARY' if field.primary
+      modifiers << 'NOT NULL' unless field.null
+      #modifiers << "LIMIT(#{field.limit})" if field.limit
+      modifiers.join(',')
     end
 
     def self.print_array(array, *args)
       if args.empty?
         case array.first
-        when ActiveRecord::Base then AwesomePrint.new.puts(array)
+        when ActiveRecord::Base then ap(array)
         else
           array.each{|element| puts element}
         end
@@ -68,7 +83,8 @@ module Arspy
 
     def self.print_object(object, *args)
       print_matrix([args.map{|arg| object[arg]}]) unless args.empty?
-      AwesomePrint.new.puts(object) if args.empty?
+      #AwesomePrint.new.puts(object) if args.empty?
+      ap(object) if args.empty?
       nil
     end
     def self.test_object(obj, args)
