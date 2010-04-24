@@ -12,7 +12,7 @@ spec = Gem::Specification.new do |s|
   s.description = 'Active Record Spy'
   s.summary = 'Rails console command line tool for browsing and inspecting the structure, associations and data of an ActiveRecord data model.'
 
-  s.add_dependency('awesome_print', '>= 0.1.1')
+  s.add_dependency('awesome_print', '>= 0.1.4')
   
   exclude_folders = '' # 'spec/rails/{doc,lib,log,nbproject,tmp,vendor,test}'
   exclude_files = [] # FileList['**/*.log'] + FileList[exclude_folders+'/**/*'] + FileList[exclude_folders]
