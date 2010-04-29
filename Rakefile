@@ -52,7 +52,7 @@ end
 
 desc 'Clean the gem build'
 task :clean do
-  File.delete('*.gem')
+  FileUtils.rm_f Dir.glob('*.gem')
 end
 
 desc 'Generate a gemspec file.'
